@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { IdeaGenerator } from '@/components/design/idea-generator'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { LoadingSpinner } from '@/components/ui/spinner'
 
 export default function HomePage() {
     return (

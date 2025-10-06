@@ -8,10 +8,10 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-    title: 'Blue Ocean Ideas Generator',
+    title: 'Tamis',
     description: 'AI-powered startup ideas generator with blue ocean strategy focus',
     keywords: ['startup ideas', 'innovation', 'blue ocean strategy', 'AI', 'business ideas'],
-    authors: [{ name: 'Blue Ocean Ideas Generator' }],
+    authors: [{ name: 'Tamis' }],
     viewport: 'width=device-width, initial-scale=1',
 }
 
