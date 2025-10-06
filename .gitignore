@@ -1,0 +1,7 @@
+# Ignore all files in the build directory
+/node_modules
+/build
+
+# Environment variables
+.env
+.env.production
