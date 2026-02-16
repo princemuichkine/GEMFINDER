@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "knip": "knip",
+    "format": "prettier --write .",
+    "types": "/opt/homebrew/bin/supabase gen types typescript --project-id hcssmstunejxdoctkgnu > lib/types/db.ts"
   },
   "dependencies": {
     "@blueprintjs/core": "^6.8.0",

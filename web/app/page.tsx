@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import GemList from "../components/design/GemList";
-import { Repository } from "@/lib/types";
+import { Repository } from "@/lib/types/repository";
 import GemNavbar from "../components/design/GemNavbar";
 
 // Disable caching for real-time updates
@@ -8,13 +8,13 @@ export const revalidate = 0;
 
 async function getGems(language?: string) {
   let query = supabase
-    .from('repositories')
-    .select('*')
-    .order('score', { ascending: false })
+    .from("repositories")
+    .select("*")
+    .order("score", { ascending: false })
     .limit(50);
 
-  if (language && language !== 'All') {
-    query = query.ilike('language', language);
+  if (language && language !== "All") {
+    query = query.ilike("language", language);
   }
 
   const { data, error } = await query;
@@ -27,8 +27,12 @@ async function getGems(language?: string) {
   return data as Repository[];
 }
 
-export default async function Home({ searchParams }: { searchParams: { lang?: string } }) {
-  const language = searchParams?.lang || 'All';
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: { lang?: string };
+}) {
+  const language = searchParams?.lang || "All";
   const gems = await getGems(language);
 
   return (
