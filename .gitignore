@@ -19,6 +19,3 @@ dist/
 # IDEs
 .cursor/
 .DS_Store
-
-# Supabase
-supabase/

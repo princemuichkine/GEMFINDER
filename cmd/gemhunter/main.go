@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/babacar/gemhunter/internal/collector"
 	"github.com/babacar/gemhunter/internal/storage"
@@ -44,22 +45,38 @@ func main() {
 			}
 			defer store.Close()
 
+			// We don't strictly need Init() if migrations are run, but keeping it for safety doesn't hurt unless it conflicts.
+			// Assuming existing Init() is safe (IF NOT EXISTS).
 			if err := store.Init(); err != nil {
-				log.Fatalf("Failed to init store: %v", err)
+				log.Printf("Warning: Failed to init store (might be handled by migrations): %v", err)
 			}
 
 			col := collector.NewCollector(githubToken, store)
-			log.Printf("Fetching recent repositories (Language: %s)...", language)
-			if err := col.FetchRecentRepos(2, 50, language); err != nil { // Last 2 days, >50 stars
-				log.Fatalf("Fetch failed: %v", err)
+
+			languages := []string{}
+			if language != "" {
+				languages = append(languages, language)
+			} else {
+				// Default list of languages to scan if none provided
+				languages = []string{
+					"Go", "Rust", "TypeScript", "JavaScript", "Python", 
+					"Solidity", "C++", "Java", "C", "Swift", "Kotlin",
+				}
+			}
+
+			for _, lang := range languages {
+				log.Printf("Fetching recent repositories (Language: %s)...", lang)
+				if err := col.FetchRecentRepos(2, 50, lang); err != nil { // Last 2 days, >50 stars
+					log.Printf("Error fetching for %s: %v", lang, err)
+				}
+				// Sleep briefly to avoid hitting rate limits too hard between languages
+				time.Sleep(2 * time.Second)
 			}
 			log.Println("Fetch complete.")
 		},
 	}
 	
 	// Add lang flag
-	fetchCmd.Flags().String("lang", "", "Filter by programming language (e.g. go, rust, typescript)")
-	
 	fetchCmd.Flags().String("lang", "", "Filter by programming language (e.g. go, rust, typescript)")
 
 	rootCmd.AddCommand(fetchCmd)
