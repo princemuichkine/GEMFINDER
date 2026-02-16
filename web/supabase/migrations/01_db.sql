@@ -38,3 +38,6 @@ CREATE INDEX IF NOT EXISTS idx_repositories_language ON repositories(language);
 
 -- Create index for created_at (for date sorting)
 CREATE INDEX IF NOT EXISTS idx_repositories_created_at ON repositories(created_at DESC);
+
+-- Create index for foreign key in metrics_history (improves JOIN performance)
+CREATE INDEX IF NOT EXISTS idx_metrics_history_repo_id ON metrics_history(repo_id);
