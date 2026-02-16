@@ -1,7 +1,24 @@
-# Ignore all files in the build directory
-/node_modules
-/build
+# Go
+/gemhunter
+*.test
+*.out
+vendor/
+
+# Node.js
+node_modules/
+pnpm-debug.log*
+
+# Next.js
+.next/
+build/
+dist/
 
 # Environment variables
 .env
-.env.production
+
+# IDEs
+.cursor/
+.DS_Store
+
+# Supabase
+supabase/
