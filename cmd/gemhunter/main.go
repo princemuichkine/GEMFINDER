@@ -21,12 +21,16 @@ func main() {
 	}
 
 	// Default to env var if flag not set
-	defaultDB := os.Getenv("SUPABASE_URL")
+	// Prefer DATABASE_URL, fallback to SUPABASE_URL for backward compatibility
+	defaultDB := os.Getenv("DATABASE_URL")
+	if defaultDB == "" {
+		defaultDB = os.Getenv("SUPABASE_URL")
+	}
 	if defaultDB == "" {
 		defaultDB = "postgres://postgres:postgres@localhost:5432/gemhunter"
 	}
 
-	rootCmd.PersistentFlags().StringVar(&dbURL, "db", defaultDB, "Postgres connection string (or SUPABASE_URL env)")
+	rootCmd.PersistentFlags().StringVar(&dbURL, "db", defaultDB, "Postgres connection string (or DATABASE_URL/SUPABASE_URL env)")
 	rootCmd.PersistentFlags().StringVar(&githubToken, "token", os.Getenv("TOKEN"), "GitHub Personal Access Token")
 
 	var fetchCmd = &cobra.Command{

@@ -28,7 +28,7 @@ jobs:
       - name: Run Gem Collector
         env:
           TOKEN: ${{ secrets.TOKEN }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "Running Gem Hunter Collector..."
           go run ./cmd/gemhunter fetch

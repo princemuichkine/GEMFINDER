@@ -77,7 +77,8 @@ BEGIN
     LIMIT p_page_size
     OFFSET (p_page - 1) * p_page_size;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to get distinct languages
 CREATE OR REPLACE FUNCTION get_distinct_languages()
@@ -89,4 +90,5 @@ BEGIN
     WHERE r.language IS NOT NULL AND r.language != ''
     ORDER BY r.language;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
