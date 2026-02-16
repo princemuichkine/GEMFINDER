@@ -2,8 +2,20 @@
 
 import { useEffect, useState, useTransition, useCallback } from "react";
 import GemTable from "../components/design/GemTable";
-import { getRepoStats, getDistinctLanguages, RepoStats } from "@/lib/supabase/queries";
-import { Button, ButtonGroup, HTMLSelect, Intent, OverlayToaster, Position, Classes } from "@blueprintjs/core";
+import {
+  getRepoStats,
+  getDistinctLanguages,
+  RepoStats,
+} from "@/lib/supabase/queries";
+import {
+  Button,
+  ButtonGroup,
+  HTMLSelect,
+  Intent,
+  OverlayToaster,
+  Position,
+  Classes,
+} from "@blueprintjs/core";
 import { runCollector } from "@/lib/utils/actions";
 
 export default function Home() {
@@ -15,6 +27,7 @@ export default function Home() {
   const [language, setLanguage] = useState<string>("All");
   const [period, setPeriod] = useState<number>(30); // Days
   const [minScore, setMinScore] = useState<number>(0); // Minimum score filter
+  const [sortBy, setSortBy] = useState<string>("score"); // Sort option
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(100);
 
@@ -29,38 +42,56 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getRepoStats(period, language, page, pageSize, minScore);
+      const data = await getRepoStats(
+        period,
+        language,
+        page,
+        pageSize,
+        minScore,
+        sortBy,
+      );
       setRepos(data);
     } catch (error) {
       console.error("Failed to load gems", error);
     } finally {
       setLoading(false);
     }
-  }, [period, language, page, pageSize, minScore]);
+  }, [period, language, page, pageSize, minScore, sortBy]);
 
   useEffect(() => {
     // Fetch data when filters change
     fetchData();
   }, [fetchData]);
 
-  const handleNextPage = () => setPage(p => p + 1);
-  const handlePrevPage = () => setPage(p => Math.max(1, p - 1));
+  const handleNextPage = () => setPage((p) => p + 1);
+  const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
 
   const handleRunEngine = () => {
     startTransition(async () => {
-      const AppToaster = await OverlayToaster.create({ position: Position.TOP });
-      AppToaster.show({ message: "Starting Collector Engine...", intent: Intent.PRIMARY });
+      const AppToaster = await OverlayToaster.create({
+        position: Position.TOP,
+      });
+      AppToaster.show({
+        message: "Starting Collector Engine...",
+        intent: Intent.PRIMARY,
+      });
 
       const result = await runCollector();
 
       if (result.success) {
-        AppToaster.show({ message: "Collector finished successfully!", intent: Intent.SUCCESS });
+        AppToaster.show({
+          message: "Collector finished successfully!",
+          intent: Intent.SUCCESS,
+        });
         // Refresh data
         fetchData();
         // Also refresh languages
         getDistinctLanguages().then(setAvailableLanguages);
       } else {
-        AppToaster.show({ message: `Collector failed: ${result.message}`, intent: Intent.DANGER });
+        AppToaster.show({
+          message: `Collector failed: ${result.message}`,
+          intent: Intent.DANGER,
+        });
       }
     });
   };
@@ -68,14 +99,17 @@ export default function Home() {
   return (
     <div className={`${Classes.DARK} min-h-screen flex flex-col`}>
       <div className="flex-1">
-        <div className="container mx-auto px-6 md:px-10 lg:px-14 pb-10 max-w-[1400px]" style={{ paddingTop: '3rem' }}>
+        <div
+          className="container mx-auto px-6 md:px-10 lg:px-14 pb-10 max-w-[1400px]"
+          style={{ paddingTop: "3rem" }}
+        >
           {/* Filters Section */}
-          <div className="mb-6" style={{ padding: '1.5rem' }}>
+          <div className="mb-6" style={{ padding: "1.5rem" }}>
             <div className="flex flex-row items-center justify-between">
               {/* Filters Group */}
               <div className="flex items-center">
                 {/* Language Filter */}
-                <div style={{ width: '180px', marginRight: '1rem' }}>
+                <div style={{ width: "180px", marginRight: "1rem" }}>
                   <HTMLSelect
                     value={language}
                     onChange={(e) => {
@@ -87,13 +121,15 @@ export default function Home() {
                   >
                     <option value="All">All languages</option>
                     {availableLanguages.map((lang) => (
-                      <option key={lang} value={lang}>{lang}</option>
+                      <option key={lang} value={lang}>
+                        {lang}
+                      </option>
                     ))}
                   </HTMLSelect>
                 </div>
 
                 {/* Growth Period Filter */}
-                <div style={{ width: '180px', marginRight: '1rem' }}>
+                <div style={{ width: "180px", marginRight: "1rem" }}>
                   <HTMLSelect
                     value={period}
                     onChange={(e) => {
@@ -103,14 +139,16 @@ export default function Home() {
                     fill
                     large
                   >
+                    <option value={7}>Last 7 Days</option>
                     <option value={30}>Last 30 Days</option>
                     <option value={90}>Last 90 Days</option>
+                    <option value={180}>Last 6 Months</option>
                     <option value={365}>Last Year</option>
                   </HTMLSelect>
                 </div>
 
                 {/* Page Size Filter */}
-                <div style={{ width: '180px', marginRight: '1rem' }}>
+                <div style={{ width: "180px", marginRight: "1rem" }}>
                   <HTMLSelect
                     value={pageSize}
                     onChange={(e) => {
@@ -127,7 +165,7 @@ export default function Home() {
                 </div>
 
                 {/* Minimum Score Filter */}
-                <div style={{ width: '180px' }}>
+                <div style={{ width: "180px", marginRight: "1rem" }}>
                   <HTMLSelect
                     value={minScore}
                     onChange={(e) => {
@@ -137,10 +175,29 @@ export default function Home() {
                     fill
                     large
                   >
-                    <option value={0}>All Scores</option>
+                    <option value={0}>All scores</option>
                     <option value={20}>Score 20+</option>
                     <option value={40}>Score 40+</option>
                     <option value={60}>Score 60+</option>
+                  </HTMLSelect>
+                </div>
+
+                {/* Sort By Filter */}
+                <div style={{ width: "200px" }}>
+                  <HTMLSelect
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setPage(1);
+                    }}
+                    fill
+                    large
+                  >
+                    <option value="score">Best score</option>
+                    <option value="stars">Most stars</option>
+                    <option value="growth">Most growth</option>
+                    <option value="created_desc">Newest first</option>
+                    <option value="created_asc">Oldest first</option>
                   </HTMLSelect>
                 </div>
               </div>
@@ -164,7 +221,15 @@ export default function Home() {
 
           {/* Pagination Footer */}
           {!loading && repos.length > 0 && (
-            <div className="flex justify-center" style={{ marginTop: '2rem', marginBottom: '2rem', paddingTop: '1rem', paddingBottom: '1rem' }}>
+            <div
+              className="flex justify-center"
+              style={{
+                marginTop: "2rem",
+                marginBottom: "2rem",
+                paddingTop: "1rem",
+                paddingBottom: "1rem",
+              }}
+            >
               <ButtonGroup>
                 <Button
                   icon="chevron-left"
@@ -178,7 +243,9 @@ export default function Home() {
                   disabled={repos.length < pageSize}
                   onClick={handleNextPage}
                   large
-                  intent={repos.length < pageSize ? Intent.NONE : Intent.PRIMARY}
+                  intent={
+                    repos.length < pageSize ? Intent.NONE : Intent.PRIMARY
+                  }
                 />
               </ButtonGroup>
             </div>

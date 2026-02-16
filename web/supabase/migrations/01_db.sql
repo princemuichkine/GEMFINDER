@@ -13,7 +13,12 @@ CREATE TABLE IF NOT EXISTS repositories (
     score FLOAT DEFAULT 0,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
-    last_scanned_at TIMESTAMPTZ
+    last_scanned_at TIMESTAMPTZ,
+    -- Creator quality metrics
+    owner_followers INTEGER DEFAULT 0,
+    owner_repo_count INTEGER DEFAULT 0,
+    -- Trending indicator
+    velocity_badge TEXT
 );
 
 -- Create metrics history table
@@ -30,3 +35,6 @@ CREATE INDEX IF NOT EXISTS idx_repositories_score ON repositories(score DESC);
 
 -- Create index for language
 CREATE INDEX IF NOT EXISTS idx_repositories_language ON repositories(language);
+
+-- Create index for created_at (for date sorting)
+CREATE INDEX IF NOT EXISTS idx_repositories_created_at ON repositories(created_at DESC);

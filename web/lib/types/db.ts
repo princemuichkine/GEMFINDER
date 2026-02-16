@@ -14,13 +14,133 @@ export type Database = {
   };
   public: {
     Tables: {
-      [_ in never]: never;
+      metrics_history: {
+        Row: {
+          captured_at: string | null;
+          forks: number | null;
+          id: number;
+          repo_id: number | null;
+          stars: number | null;
+        };
+        Insert: {
+          captured_at?: string | null;
+          forks?: number | null;
+          id?: number;
+          repo_id?: number | null;
+          stars?: number | null;
+        };
+        Update: {
+          captured_at?: string | null;
+          forks?: number | null;
+          id?: number;
+          repo_id?: number | null;
+          stars?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "metrics_history_repo_id_fkey";
+            columns: ["repo_id"];
+            isOneToOne: false;
+            referencedRelation: "repositories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      repositories: {
+        Row: {
+          created_at: string | null;
+          description: string | null;
+          forks: number | null;
+          github_id: number;
+          id: number;
+          issues: number | null;
+          language: string | null;
+          last_scanned_at: string | null;
+          name: string;
+          owner: string;
+          owner_followers: number | null;
+          owner_repo_count: number | null;
+          score: number | null;
+          stars: number | null;
+          updated_at: string | null;
+          velocity_badge: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          description?: string | null;
+          forks?: number | null;
+          github_id: number;
+          id?: number;
+          issues?: number | null;
+          language?: string | null;
+          last_scanned_at?: string | null;
+          name: string;
+          owner: string;
+          owner_followers?: number | null;
+          owner_repo_count?: number | null;
+          score?: number | null;
+          stars?: number | null;
+          updated_at?: string | null;
+          velocity_badge?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          description?: string | null;
+          forks?: number | null;
+          github_id?: number;
+          id?: number;
+          issues?: number | null;
+          language?: string | null;
+          last_scanned_at?: string | null;
+          name?: string;
+          owner?: string;
+          owner_followers?: number | null;
+          owner_repo_count?: number | null;
+          score?: number | null;
+          stars?: number | null;
+          updated_at?: string | null;
+          velocity_badge?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_distinct_languages: {
+        Args: never;
+        Returns: {
+          language: string;
+        }[];
+      };
+      get_repo_stats: {
+        Args: {
+          p_language?: string;
+          p_min_score?: number;
+          p_page?: number;
+          p_page_size?: number;
+          p_period_days?: number;
+          p_sort_by?: string;
+        };
+        Returns: {
+          created_at: string;
+          description: string;
+          forks: number;
+          forks_growth: number;
+          issues: number;
+          language: string;
+          name: string;
+          owner: string;
+          owner_followers: number;
+          owner_repo_count: number;
+          repo_id: number;
+          score: number;
+          stars: number;
+          stars_growth: number;
+          velocity_badge: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

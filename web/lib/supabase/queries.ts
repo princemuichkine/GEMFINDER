@@ -13,6 +13,9 @@ export type RepoStats = {
   created_at: string;
   stars_growth: number;
   forks_growth: number;
+  owner_followers: number;
+  owner_repo_count: number;
+  velocity_badge: string;
 };
 
 export async function getRepoStats(
@@ -20,7 +23,8 @@ export async function getRepoStats(
   language: string | null = null,
   page: number = 1,
   pageSize: number = 50,
-  minScore: number = 0
+  minScore: number = 0,
+  sortBy: string = "score",
 ) {
   const { data, error } = await supabase.rpc("get_repo_stats", {
     p_period_days: periodDays,
@@ -28,6 +32,7 @@ export async function getRepoStats(
     p_page: page,
     p_page_size: pageSize,
     p_min_score: minScore,
+    p_sort_by: sortBy,
   });
 
   if (error) {

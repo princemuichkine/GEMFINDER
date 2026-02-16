@@ -15,7 +15,9 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 }
 
 /* Force dark mode for html element */
@@ -36,7 +38,9 @@ body.bp5-dark,
 /* Remove white borders from Blueprint components in dark mode */
 .bp5-dark .bp5-card {
   border: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.3);
   background-color: rgba(255, 255, 255, 0.03);
   border-radius: 6px;
 }
@@ -91,7 +95,9 @@ body.bp5-dark,
 .bp5-dark .bp5-input:focus,
 .bp5-dark .bp5-select select:focus {
   border-color: #48aff0;
-  box-shadow: 0 0 0 1px #48aff0, inset 0 0 0 1px rgba(72, 175, 240, 0.2);
+  box-shadow:
+    0 0 0 1px #48aff0,
+    inset 0 0 0 1px rgba(72, 175, 240, 0.2);
 }
 
 /* Allow Tailwind utilities to work alongside Blueprint */

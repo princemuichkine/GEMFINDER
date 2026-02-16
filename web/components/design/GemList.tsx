@@ -9,8 +9,10 @@ import {
   AnchorButton,
   Icon,
 } from "@blueprintjs/core";
-import { Repository } from "@/lib/types/repository";
 import { IconNames } from "@blueprintjs/icons";
+import { Tables } from "@/lib/types/db";
+
+type Repository = Tables<"repositories">;
 
 interface GemListProps {
   repos: Repository[];
@@ -20,7 +22,7 @@ export default function GemList({ repos }: GemListProps) {
   if (repos.length === 0) {
     return (
       <Card className="m-8 text-center text-gray-500">
-        <H3>No Gems Found Yet</H3>
+        <H3>No gems found yet</H3>
         <p>Run the collector to populate data.</p>
       </Card>
     );
@@ -44,11 +46,13 @@ export default function GemList({ repos }: GemListProps) {
             <tr key={repo.id}>
               <td>
                 <Tag
-                  intent={repo.score > 5 ? Intent.SUCCESS : Intent.PRIMARY}
+                  intent={
+                    (repo.score ?? 0) > 5 ? Intent.SUCCESS : Intent.PRIMARY
+                  }
                   round
                   className="font-bold"
                 >
-                  {repo.score.toFixed(1)}
+                  {(repo.score ?? 0).toFixed(1)}
                 </Tag>
               </td>
               <td>
@@ -69,10 +73,10 @@ export default function GemList({ repos }: GemListProps) {
                     size={12}
                     className="text-yellow-500"
                   />
-                  {repo.stars.toLocaleString()}
+                  {(repo.stars ?? 0).toLocaleString()}
                 </div>
               </td>
-              <td>{repo.issues.toLocaleString()}</td>
+              <td>{(repo.issues ?? 0).toLocaleString()}</td>
               <td className="text-right">
                 <AnchorButton
                   href={`https://github.com/${repo.owner}/${repo.name}`}

@@ -78,9 +78,20 @@ func (c *Collector) FetchRecentRepos(days int, minStars int, maxStars int, langu
 			continue
 		}
 
+		// Fetch owner information for creator quality score
+		owner := repo.GetOwner()
+		ownerLogin := owner.GetLogin()
+		
+		// Get owner details to fetch followers and repo count
+		ownerDetails, _, err := c.client.Users.Get(ctx, ownerLogin)
+		if err != nil {
+			log.Printf("Failed to fetch owner %s details: %v", ownerLogin, err)
+			// Continue anyway with default values
+		}
+
 		r := &models.Repository{
 			GithubID:      repo.GetID(),
-			Owner:         repo.GetOwner().GetLogin(),
+			Owner:         ownerLogin,
 			Name:          repo.GetName(),
 			Description:   repo.GetDescription(),
 			Language:      repo.GetLanguage(),
@@ -91,8 +102,15 @@ func (c *Collector) FetchRecentRepos(days int, minStars int, maxStars int, langu
 			UpdatedAt:     repo.GetUpdatedAt().Time,
 			LastScannedAt: time.Now(),
 		}
+		
+		// Set creator metrics if owner details were fetched
+		if ownerDetails != nil {
+			r.OwnerFollowers = ownerDetails.GetFollowers()
+			r.OwnerRepoCount = ownerDetails.GetPublicRepos()
+		}
 
 		r.Score = scorer.CalculateScore(*r)
+		r.VelocityBadge = scorer.CalculateVelocityBadge(*r)
 
 		if err := c.store.SaveRepo(r); err != nil {
 			log.Printf("Failed to save repo %s: %v", r.Name, err)

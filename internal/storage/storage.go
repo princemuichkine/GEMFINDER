@@ -58,21 +58,25 @@ func (s *Store) Init() error {
 
 func (s *Store) SaveRepo(r *models.Repository) error {
 	query := `
-	INSERT INTO repositories (github_id, owner, name, description, language, stars, forks, issues, score, created_at, updated_at, last_scanned_at)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	INSERT INTO repositories (github_id, owner, name, description, language, stars, forks, issues, score, created_at, updated_at, last_scanned_at, owner_followers, owner_repo_count, velocity_badge)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	ON CONFLICT(github_id) DO UPDATE SET
 		stars = excluded.stars,
 		forks = excluded.forks,
 		issues = excluded.issues,
 		score = excluded.score,
 		updated_at = excluded.updated_at,
-		last_scanned_at = excluded.last_scanned_at
+		last_scanned_at = excluded.last_scanned_at,
+		owner_followers = excluded.owner_followers,
+		owner_repo_count = excluded.owner_repo_count,
+		velocity_badge = excluded.velocity_badge
 	RETURNING id;
 	`
 	var repoID int64
 	err := s.db.QueryRow(query, 
 		r.GithubID, r.Owner, r.Name, r.Description, r.Language, 
 		r.Stars, r.Forks, r.Issues, r.Score, r.CreatedAt, r.UpdatedAt, r.LastScannedAt,
+		r.OwnerFollowers, r.OwnerRepoCount, r.VelocityBadge,
 	).Scan(&repoID)
 	
 	if err != nil {

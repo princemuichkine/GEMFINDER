@@ -34,8 +34,6 @@ func main() {
 		Short: "Fetch recent trending repositories from GitHub",
 		Run: func(cmd *cobra.Command, args []string) {
 			language, _ := cmd.Flags().GetString("lang")
-			minStars, _ := cmd.Flags().GetInt("min-stars")
-			maxStars, _ := cmd.Flags().GetInt("max-stars")
 			days, _ := cmd.Flags().GetInt("days")
 
 			if githubToken == "" {
@@ -80,23 +78,37 @@ func main() {
 				"template", "boilerplate", "starter", "awesome-", "learn-",
 			}
 
+			// Star range diversity - vary ranges to find different types of gems
+			starRanges := []struct{ min, max int }{
+				{10, 100},      // Small hidden gems
+				{100, 500},     // Rising projects
+				{500, 2000},    // Established quality
+				{2000, 10000},  // Popular but not giants
+			}
+
 			for _, lang := range languages {
-				log.Printf("Fetching recent repositories (Language: %s, Days: %d, Stars: %d-%d)...", lang, days, minStars, maxStars)
-				
-				// Fetch multiple pages (e.g., 5 pages = 500 repos)
-				for page := 1; page <= 5; page++ {
-					log.Printf("  Page %d...", page)
-					if err := col.FetchRecentRepos(days, minStars, maxStars, lang, page, blacklist); err != nil {
-						log.Printf("Error fetching for %s (page %d): %v", lang, page, err)
-						// Verify if we should break or continue (hit rate limit?)
-						// For now, continue to next language if serious error
-						break 
+				// Rotate through star ranges for diversity
+				for i, starRange := range starRanges {
+					log.Printf("Fetching recent repositories (Language: %s, Days: %d, Stars: %d-%d)...", 
+						lang, days, starRange.min, starRange.max)
+					
+					// Fetch multiple pages (10 pages = 1000 repos per range)
+					pagesToFetch := 3 // 3 pages per range = more diversity
+					for page := 1; page <= pagesToFetch; page++ {
+						log.Printf("  Range %d/%d, Page %d...", i+1, len(starRanges), page)
+						if err := col.FetchRecentRepos(days, starRange.min, starRange.max, lang, page, blacklist); err != nil {
+							log.Printf("Error fetching for %s (page %d): %v", lang, page, err)
+							break
+						}
+						time.Sleep(1 * time.Second) // Pause between pages
 					}
-					time.Sleep(1 * time.Second) // Pause between pages
+					
+					// Sleep between ranges
+					time.Sleep(2 * time.Second)
 				}
 				
-				// Sleep briefly to avoid hitting rate limits too hard between languages
-				time.Sleep(2 * time.Second)
+				// Sleep between languages
+				time.Sleep(3 * time.Second)
 			}
 			log.Println("Fetch complete.")
 		},

@@ -6,7 +6,8 @@ CREATE OR REPLACE FUNCTION get_repo_stats(
     p_language TEXT DEFAULT NULL,
     p_page INT DEFAULT 1,
     p_page_size INT DEFAULT 50,
-    p_min_score FLOAT DEFAULT 0
+    p_min_score FLOAT DEFAULT 0,
+    p_sort_by TEXT DEFAULT 'score'
 )
 RETURNS TABLE (
     repo_id BIGINT,
@@ -20,7 +21,10 @@ RETURNS TABLE (
     score FLOAT,
     created_at TIMESTAMPTZ,
     stars_growth INT,
-    forks_growth INT
+    forks_growth INT,
+    owner_followers INT,
+    owner_repo_count INT,
+    velocity_badge TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -45,14 +49,30 @@ BEGIN
         r.score,
         r.created_at,
         (r.stars - COALESCE(om.old_stars, r.stars)) AS stars_growth,
-        (r.forks - COALESCE(om.old_forks, r.forks)) AS forks_growth
+        (r.forks - COALESCE(om.old_forks, r.forks)) AS forks_growth,
+        r.owner_followers,
+        r.owner_repo_count,
+        r.velocity_badge
     FROM repositories r
     LEFT JOIN old_metrics om ON r.id = om.repo_id AND om.rn = 1
     WHERE 
         (p_language IS NULL OR p_language = 'All' OR r.language ILIKE p_language)
         AND r.score >= p_min_score
     ORDER BY 
-        stars_growth DESC NULLS LAST, -- Prioritize growth
+        CASE 
+            WHEN p_sort_by = 'score' THEN r.score
+            WHEN p_sort_by = 'stars' THEN r.stars::FLOAT
+            WHEN p_sort_by = 'growth' THEN (r.stars - COALESCE(om.old_stars, r.stars))::FLOAT
+            ELSE r.score
+        END DESC NULLS LAST,
+        CASE 
+            WHEN p_sort_by = 'created_asc' THEN EXTRACT(EPOCH FROM r.created_at)
+            ELSE 0
+        END ASC NULLS LAST,
+        CASE 
+            WHEN p_sort_by = 'created_desc' THEN EXTRACT(EPOCH FROM r.created_at)
+            ELSE 0
+        END DESC NULLS LAST,
         r.stars DESC
     LIMIT p_page_size
     OFFSET (p_page - 1) * p_page_size;

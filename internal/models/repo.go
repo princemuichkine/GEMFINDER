@@ -16,4 +16,9 @@ type Repository struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	LastScannedAt time.Time
+	// Creator quality metrics
+	OwnerFollowers  int
+	OwnerRepoCount  int
+	// Trending indicator
+	VelocityBadge   string
 }
