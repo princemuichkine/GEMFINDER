@@ -1,0 +1,39 @@
+name: Daily Gem Collector
+
+on:
+  # Run once per day at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # Allow manual triggering from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  run-collector:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+      
+      - name: Install dependencies
+        run: go mod download
+      
+      - name: Run Gem Collector
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          echo "Running Gem Hunter Collector..."
+          go run ./cmd/gemhunter fetch
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Gem collector failed to run"
