@@ -6,12 +6,18 @@ import (
 	"os"
 	"time"
 
+	"strings"
+
 	"github.com/babacar/gemhunter/internal/collector"
 	"github.com/babacar/gemhunter/internal/storage"
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
 func main() {
+	// Load .env file if it exists
+	_ = godotenv.Load()
+
 	var dbURL string
 	var githubToken string
 
@@ -31,7 +37,8 @@ func main() {
 	}
 
 	rootCmd.PersistentFlags().StringVar(&dbURL, "db", defaultDB, "Postgres connection string (or DATABASE_URL/SUPABASE_URL env)")
-	rootCmd.PersistentFlags().StringVar(&githubToken, "token", os.Getenv("TOKEN"), "GitHub Personal Access Token")
+	tokenEnv := os.Getenv("TOKEN")
+	rootCmd.PersistentFlags().StringVar(&githubToken, "token", tokenEnv, "GitHub Personal Access Token")
 
 	var fetchCmd = &cobra.Command{
 		Use:   "fetch",
@@ -40,11 +47,13 @@ func main() {
 			language, _ := cmd.Flags().GetString("lang")
 			days, _ := cmd.Flags().GetInt("days")
 
+			githubToken = strings.TrimSpace(githubToken)
+
 			if githubToken == "" {
 				log.Fatal("TOKEN is required (set via flag or env var)")
 			}
 
-			store, err := storage.NewStore(dbURL)
+			store, err := storage.NewStore(strings.TrimSpace(dbURL))
 			if err != nil {
 				log.Fatalf("Failed to open store: %v", err)
 			}
@@ -73,21 +82,25 @@ func main() {
 				"claude", "tutorial", "course", "demo", "example", "learning",
 				
 				// OpenClaw/ClawBot ecosystem (boring)
-				"openclaw", "clawbot", "claw-", "-claw", "clawwork",
+				"openclaw", "clawbot", "claw-", "-claw", "clawwork", "zeroclaw", "claw",
 				
 				// Skills & MCP-related
 				"skill", "skills", "mcp", "model-context",
+
+				// Crypto/Trading bots (noise)
+				"polymarket", "trading-bot", "arbitrage", "telegram-bot",
 				
 				// Other common patterns
 				"template", "boilerplate", "starter", "awesome-", "learn-",
+				"daily-digest", "digest", "age-verifier",
 			}
 
 			// Star range diversity - vary ranges to find different types of gems
 			starRanges := []struct{ min, max int }{
-				{10, 100},      // Small hidden gems
-				{100, 500},     // Rising projects
-				{500, 2000},    // Established quality
-				{2000, 10000},  // Popular but not giants
+				{10, 200},      // Small hidden gems
+				{200, 1000},    // Rising projects
+				{1000, 5000},   // Established quality
+				{5000, 15000},  // Popular but not giants
 			}
 
 			for _, lang := range languages {

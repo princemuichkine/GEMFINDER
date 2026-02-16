@@ -167,16 +167,6 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                       >
                         {repo.owner}/{repo.name}
                       </span>
-                      {repo.velocity_badge && (
-                        <span
-                          style={{
-                            fontSize: "0.875rem",
-                            marginLeft: "-0.5rem",
-                          }}
-                        >
-                          {repo.velocity_badge}
-                        </span>
-                      )}
                       <Tag
                         intent={getScoreIntent(repo.score)}
                         minimal
