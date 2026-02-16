@@ -65,8 +65,20 @@ func main() {
 				}
 			}
 
-			// Blacklist patterns (lowercase)
-			blacklist := []string{"claude", "tutorial", "course", "demo", "example", "learning"}
+			// Blacklist patterns (lowercase) - filter out boring/tutorial repos
+			blacklist := []string{
+				// Tutorials & Learning
+				"claude", "tutorial", "course", "demo", "example", "learning",
+				
+				// OpenClaw/ClawBot ecosystem (boring)
+				"openclaw", "clawbot", "claw-", "-claw", "clawwork",
+				
+				// Skills & MCP-related
+				"skill", "skills", "mcp", "model-context",
+				
+				// Other common patterns
+				"template", "boilerplate", "starter", "awesome-", "learn-",
+			}
 
 			for _, lang := range languages {
 				log.Printf("Fetching recent repositories (Language: %s, Days: %d, Stars: %d-%d)...", lang, days, minStars, maxStars)

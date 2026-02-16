@@ -6,20 +6,98 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force dark mode */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #1a1d29;
+  --foreground: #e4e7eb;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Force dark mode for html element */
+html {
+  background-color: #1a1d29;
+  color-scheme: dark;
+}
+
+/* Minimal overrides - let Blueprint handle its own styling */
+/* Only override what's absolutely necessary for dark theme integration */
+
+/* Ensure dark theme background */
+body.bp5-dark,
+.bp5-dark {
+  background-color: #1a1d29;
+}
+
+/* Remove white borders from Blueprint components in dark mode */
+.bp5-dark .bp5-card {
+  border: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+/* Better table styling */
+.bp5-dark .bp5-html-table th {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.bp5-dark .bp5-html-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bp5-dark .bp5-navbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.bp5-dark .bp5-html-table {
+  border: none;
+}
+
+.bp5-dark .bp5-html-table th,
+.bp5-dark .bp5-html-table td {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bp5-dark .bp5-divider {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Remove white borders from inputs and selects */
+.bp5-dark .bp5-html-select select,
+.bp5-dark .bp5-input,
+.bp5-dark .bp5-select select {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bp5-dark .bp5-html-select select:hover,
+.bp5-dark .bp5-input:hover,
+.bp5-dark .bp5-select select:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.bp5-dark .bp5-html-select select:focus,
+.bp5-dark .bp5-input:focus,
+.bp5-dark .bp5-select select:focus {
+  border-color: #48aff0;
+  box-shadow: 0 0 0 1px #48aff0, inset 0 0 0 1px rgba(72, 175, 240, 0.2);
+}
+
+/* Allow Tailwind utilities to work alongside Blueprint */
+.bp5-button,
+.bp5-select,
+.bp5-input,
+.bp5-html-select {
+  font-family: inherit;
 }

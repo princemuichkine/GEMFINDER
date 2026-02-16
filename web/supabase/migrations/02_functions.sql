@@ -5,7 +5,8 @@ CREATE OR REPLACE FUNCTION get_repo_stats(
     p_period_days INT DEFAULT 30,
     p_language TEXT DEFAULT NULL,
     p_page INT DEFAULT 1,
-    p_page_size INT DEFAULT 50
+    p_page_size INT DEFAULT 50,
+    p_min_score FLOAT DEFAULT 0
 )
 RETURNS TABLE (
     repo_id BIGINT,
@@ -49,6 +50,7 @@ BEGIN
     LEFT JOIN old_metrics om ON r.id = om.repo_id AND om.rn = 1
     WHERE 
         (p_language IS NULL OR p_language = 'All' OR r.language ILIKE p_language)
+        AND r.score >= p_min_score
     ORDER BY 
         stars_growth DESC NULLS LAST, -- Prioritize growth
         r.stars DESC

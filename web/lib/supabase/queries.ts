@@ -19,13 +19,15 @@ export async function getRepoStats(
   periodDays: number = 30,
   language: string | null = null,
   page: number = 1,
-  pageSize: number = 50
+  pageSize: number = 50,
+  minScore: number = 0
 ) {
   const { data, error } = await supabase.rpc("get_repo_stats", {
     p_period_days: periodDays,
     p_language: language === "All" ? null : language,
     p_page: page,
     p_page_size: pageSize,
+    p_min_score: minScore,
   });
 
   if (error) {
