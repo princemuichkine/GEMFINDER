@@ -12,7 +12,7 @@ export async function runCollector() {
 
     console.log("Triggering collector...");
     const { stdout, stderr } = await execAsync(
-      `cd ${projectRoot} && GITHUB_TOKEN=${process.env.GITHUB_TOKEN} SUPABASE_URL=${process.env.SUPABASE_URL} go run ./cmd/gemhunter fetch`,
+      `cd ${projectRoot} && TOKEN=${process.env.TOKEN} SUPABASE_URL=${process.env.SUPABASE_URL} go run ./cmd/gemhunter fetch`,
     );
 
     console.log("Collector output:", stdout);

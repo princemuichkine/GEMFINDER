@@ -27,7 +27,7 @@ func main() {
 	}
 
 	rootCmd.PersistentFlags().StringVar(&dbURL, "db", defaultDB, "Postgres connection string (or SUPABASE_URL env)")
-	rootCmd.PersistentFlags().StringVar(&githubToken, "token", os.Getenv("GITHUB_TOKEN"), "GitHub Personal Access Token")
+	rootCmd.PersistentFlags().StringVar(&githubToken, "token", os.Getenv("TOKEN"), "GitHub Personal Access Token")
 
 	var fetchCmd = &cobra.Command{
 		Use:   "fetch",
@@ -37,7 +37,7 @@ func main() {
 			days, _ := cmd.Flags().GetInt("days")
 
 			if githubToken == "" {
-				log.Fatal("GITHUB_TOKEN is required (set via flag or env var)")
+				log.Fatal("TOKEN is required (set via flag or env var)")
 			}
 
 			store, err := storage.NewStore(dbURL)
