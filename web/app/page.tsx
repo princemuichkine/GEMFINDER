@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import GemNavbar from "../components/design/GemNavbar";
 import GemTable from "../components/design/GemTable";
 import { getRepoStats, getDistinctLanguages, RepoStats } from "@/lib/supabase/queries";
-import { Button, ButtonGroup, HTMLSelect } from "@blueprintjs/core";
+import { Button, ButtonGroup, HTMLSelect, Intent, OverlayToaster, Position } from "@blueprintjs/core";
+import { runCollector } from "./actions";
 
 export default function Home() {
   const [repos, setRepos] = useState<RepoStats[]>([]);
@@ -17,30 +18,52 @@ export default function Home() {
   const [page, setPage] = useState<number>(1);
   const pageSize = 100;
 
+  // Server Action Transition
+  const [isPending, startTransition] = useTransition();
+
   useEffect(() => {
     // Load available languages on mount
     getDistinctLanguages().then(setAvailableLanguages);
   }, []);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getRepoStats(period, language, page, pageSize);
+      setRepos(data);
+    } catch (error) {
+      console.error("Failed to load gems", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [period, language, page]);
+
   useEffect(() => {
     // Fetch data when filters change
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const data = await getRepoStats(period, language, page, pageSize);
-        setRepos(data);
-      } catch (error) {
-        console.error("Failed to load gems", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [language, period, page]);
+  }, [fetchData]);
 
   const handleNextPage = () => setPage(p => p + 1);
   const handlePrevPage = () => setPage(p => Math.max(1, p - 1));
+
+  const handleRunEngine = () => {
+    startTransition(async () => {
+      const AppToaster = await OverlayToaster.create({ position: Position.TOP });
+      AppToaster.show({ message: "Starting Collector Engine...", intent: Intent.PRIMARY });
+
+      const result = await runCollector();
+
+      if (result.success) {
+        AppToaster.show({ message: "Collector finished successfully!", intent: Intent.SUCCESS });
+        // Refresh data
+        fetchData();
+        // Also refresh languages
+        getDistinctLanguages().then(setAvailableLanguages);
+      } else {
+        AppToaster.show({ message: `Collector failed: ${result.message}`, intent: Intent.DANGER });
+      }
+    });
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
@@ -58,6 +81,20 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+
+            {/* Run Engine Button */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase">&nbsp;</label>
+              <Button
+                intent={Intent.SUCCESS}
+                icon="play"
+                text="Run Engine"
+                loading={isPending}
+                onClick={handleRunEngine}
+              />
+            </div>
+
+            <div className="w-px h-10 bg-gray-200 dark:bg-gray-700 mx-2 hidden md:block"></div>
 
             {/* Language Filter */}
             <div className="flex flex-col gap-1">

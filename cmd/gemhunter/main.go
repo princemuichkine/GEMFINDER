@@ -34,6 +34,9 @@ func main() {
 		Short: "Fetch recent trending repositories from GitHub",
 		Run: func(cmd *cobra.Command, args []string) {
 			language, _ := cmd.Flags().GetString("lang")
+			minStars, _ := cmd.Flags().GetInt("min-stars")
+			maxStars, _ := cmd.Flags().GetInt("max-stars")
+			days, _ := cmd.Flags().GetInt("days")
 
 			if githubToken == "" {
 				log.Fatal("GITHUB_TOKEN is required (set via flag or env var)")
@@ -45,8 +48,6 @@ func main() {
 			}
 			defer store.Close()
 
-			// We don't strictly need Init() if migrations are run, but keeping it for safety doesn't hurt unless it conflicts.
-			// Assuming existing Init() is safe (IF NOT EXISTS).
 			if err := store.Init(); err != nil {
 				log.Printf("Warning: Failed to init store (might be handled by migrations): %v", err)
 			}
@@ -64,11 +65,24 @@ func main() {
 				}
 			}
 
+			// Blacklist patterns (lowercase)
+			blacklist := []string{"claude", "tutorial", "course", "demo", "example", "learning"}
+
 			for _, lang := range languages {
-				log.Printf("Fetching recent repositories (Language: %s)...", lang)
-				if err := col.FetchRecentRepos(2, 50, lang); err != nil { // Last 2 days, >50 stars
-					log.Printf("Error fetching for %s: %v", lang, err)
+				log.Printf("Fetching recent repositories (Language: %s, Days: %d, Stars: %d-%d)...", lang, days, minStars, maxStars)
+				
+				// Fetch multiple pages (e.g., 5 pages = 500 repos)
+				for page := 1; page <= 5; page++ {
+					log.Printf("  Page %d...", page)
+					if err := col.FetchRecentRepos(days, minStars, maxStars, lang, page, blacklist); err != nil {
+						log.Printf("Error fetching for %s (page %d): %v", lang, page, err)
+						// Verify if we should break or continue (hit rate limit?)
+						// For now, continue to next language if serious error
+						break 
+					}
+					time.Sleep(1 * time.Second) // Pause between pages
 				}
+				
 				// Sleep briefly to avoid hitting rate limits too hard between languages
 				time.Sleep(2 * time.Second)
 			}
@@ -76,8 +90,10 @@ func main() {
 		},
 	}
 	
-	// Add lang flag
-	fetchCmd.Flags().String("lang", "", "Filter by programming language (e.g. go, rust, typescript)")
+	fetchCmd.Flags().String("lang", "", "Filter by programming language")
+	fetchCmd.Flags().Int("min-stars", 10, "Minimum stars required")
+	fetchCmd.Flags().Int("max-stars", 10000, "Maximum stars allowed (to exclude huge repos)")
+	fetchCmd.Flags().Int("days", 30, "Look back days for creation date")
 
 	rootCmd.AddCommand(fetchCmd)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/babacar/gemhunter/internal/models"
@@ -32,11 +33,13 @@ func NewCollector(token string, store *storage.Store) *Collector {
 	}
 }
 
-// FetchRecentRepos searches for repositories created in the last n days with > minStars
-func (c *Collector) FetchRecentRepos(days int, minStars int, language string) error {
+// FetchRecentRepos searches for repositories created in the last n days
+func (c *Collector) FetchRecentRepos(days int, minStars int, maxStars int, language string, page int, blacklist []string) error {
 	ctx := context.Background()
 	date := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
-	query := fmt.Sprintf("created:>%s stars:>%d", date, minStars)
+	
+	// Construct query: created:>DATE stars:MIN..MAX
+	query := fmt.Sprintf("created:>%s stars:%d..%d", date, minStars, maxStars)
 	
 	if language != "" {
 		query += fmt.Sprintf(" language:%s", language)
@@ -46,19 +49,35 @@ func (c *Collector) FetchRecentRepos(days int, minStars int, language string) er
 		Sort:  "stars",
 		Order: "desc",
 		ListOptions: github.ListOptions{
+			Page:    page,
 			PerPage: 100,
 		},
 	}
 
-	// Fetch first page for now
 	result, _, err := c.client.Search.Repositories(ctx, query, opts)
 	if err != nil {
 		return fmt.Errorf("search failed: %w", err)
 	}
 
-	log.Printf("Found %d repositories", *result.Total)
+	log.Printf("Found %d repositories (Total: %d)", len(result.Repositories), *result.Total)
 
 	for _, repo := range result.Repositories {
+		// Skip likely irrelevant repos based on blacklist (name or description)
+		name := repo.GetName()
+		desc := repo.GetDescription()
+		
+		isBlacklisted := false
+		for _, term := range blacklist {
+			if containsIgnoreCase(name, term) || containsIgnoreCase(desc, term) {
+				isBlacklisted = true
+				break
+			}
+		}
+		
+		if isBlacklisted {
+			continue
+		}
+
 		r := &models.Repository{
 			GithubID:      repo.GetID(),
 			Owner:         repo.GetOwner().GetLogin(),
@@ -77,9 +96,12 @@ func (c *Collector) FetchRecentRepos(days int, minStars int, language string) er
 
 		if err := c.store.SaveRepo(r); err != nil {
 			log.Printf("Failed to save repo %s: %v", r.Name, err)
-		} else {
-			// log.Printf("Saved %s/%s (%d stars)", r.Owner, r.Name, r.Stars)
 		}
 	}
 	return nil
+}
+
+func containsIgnoreCase(s, substr string) bool {
+	return len(s) > 0 && len(substr) > 0 && 
+		(strings.Contains(strings.ToLower(s), strings.ToLower(substr)))
 }
