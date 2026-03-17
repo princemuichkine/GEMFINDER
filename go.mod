@@ -1,6 +1,6 @@
 module github.com/babacar/gemhunter
 
-go 1.25.7
+go 1.24.0
 
 require (
 	github.com/google/go-github/v69 v69.2.0

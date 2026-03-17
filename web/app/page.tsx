@@ -20,7 +20,7 @@ import {
   Menu,
   MenuItem,
 } from "@blueprintjs/core";
-import { runCollector, runCleanup } from "@/lib/utils/actions";
+import { runCleanup } from "@/lib/utils/actions";
 
 export default function Home() {
   const [repos, setRepos] = useState<RepoStats[]>([]);
@@ -36,8 +36,6 @@ export default function Home() {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(100);
 
-  // Server Action Transition
-  const [isPending, startTransition] = useTransition();
   const [isCleanupPending, startCleanupTransition] = useTransition();
 
   useEffect(() => {
@@ -85,35 +83,6 @@ export default function Home() {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return d.toLocaleDateString();
-  };
-
-  const handleRunEngine = () => {
-    startTransition(async () => {
-      const AppToaster = await OverlayToaster.create({
-        position: Position.TOP,
-      });
-      AppToaster.show({
-        message: "Running collector... (usually takes ~20 min)",
-        intent: Intent.PRIMARY,
-      });
-
-      const result = await runCollector();
-
-      if (result.success) {
-        AppToaster.show({
-          message: "Collector finished successfully!",
-          intent: Intent.SUCCESS,
-        });
-        fetchData();
-        getDistinctLanguages().then(setAvailableLanguages);
-        getLastRunAt().then(setLastRunAt);
-      } else {
-        AppToaster.show({
-          message: `Collector failed: ${result.message}`,
-          intent: Intent.DANGER,
-        });
-      }
-    });
   };
 
   const handleCleanup = () => {
@@ -250,7 +219,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Run Engine Button + Last Run + Cleanup */}
+              {/* Last Run + Cleanup */}
               <div className="flex-shrink-0 flex items-center gap-4">
                 <span
                   className={Classes.TEXT_MUTED}
@@ -258,14 +227,6 @@ export default function Home() {
                 >
                   Last run: {formatLastRun(lastRunAt)}
                 </span>
-                <Button
-                  intent={Intent.SUCCESS}
-                  icon="play"
-                  text="Run"
-                  loading={isPending}
-                  onClick={handleRunEngine}
-                  large
-                />
                 <Popover
                   content={
                     <Menu>
