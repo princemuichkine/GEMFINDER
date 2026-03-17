@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import GemTable from "../components/design/GemTable";
 import {
   getRepoStats,
   getDistinctLanguages,
-  getLastRunAt,
   RepoStats,
 } from "@/lib/supabase/queries";
 import {
@@ -13,20 +12,13 @@ import {
   ButtonGroup,
   HTMLSelect,
   Intent,
-  OverlayToaster,
-  Position,
   Classes,
-  Popover,
-  Menu,
-  MenuItem,
 } from "@blueprintjs/core";
-import { runCleanup } from "@/lib/utils/actions";
 
 export default function Home() {
   const [repos, setRepos] = useState<RepoStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
-  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 
   // Filters
   const [language, setLanguage] = useState<string>("All");
@@ -36,11 +28,8 @@ export default function Home() {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(100);
 
-  const [isCleanupPending, startCleanupTransition] = useTransition();
-
   useEffect(() => {
     getDistinctLanguages().then(setAvailableLanguages);
-    getLastRunAt().then(setLastRunAt);
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -69,49 +58,6 @@ export default function Home() {
 
   const handleNextPage = () => setPage((p) => p + 1);
   const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
-
-  const formatLastRun = (iso: string | null) => {
-    if (!iso) return "Never";
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString();
-  };
-
-  const handleCleanup = () => {
-    startCleanupTransition(async () => {
-      const AppToaster = await OverlayToaster.create({
-        position: Position.TOP,
-      });
-      AppToaster.show({
-        message: "Cleaning up old repos...",
-        intent: Intent.PRIMARY,
-      });
-
-      const result = await runCleanup(180);
-
-      if (result.success) {
-        AppToaster.show({
-          message: "Cleanup finished. Refreshing...",
-          intent: Intent.SUCCESS,
-        });
-        fetchData();
-        getDistinctLanguages().then(setAvailableLanguages);
-      } else {
-        AppToaster.show({
-          message: `Cleanup failed: ${result.message}`,
-          intent: Intent.DANGER,
-        });
-      }
-    });
-  };
 
   return (
     <div className={`${Classes.DARK} min-h-screen flex flex-col`}>
@@ -217,37 +163,6 @@ export default function Home() {
                     <option value="created_asc">Oldest first</option>
                   </HTMLSelect>
                 </div>
-              </div>
-
-              {/* Last Run + Cleanup */}
-              <div className="flex-shrink-0 flex items-center gap-4">
-                <span
-                  className={Classes.TEXT_MUTED}
-                  style={{ fontSize: "0.875rem" }}
-                >
-                  Last run: {formatLastRun(lastRunAt)}
-                </span>
-                <Popover
-                  content={
-                    <Menu>
-                      <MenuItem
-                        icon="trash"
-                        text="Clean old repos (180+ days)"
-                        onClick={handleCleanup}
-                        disabled={isCleanupPending}
-                      />
-                    </Menu>
-                  }
-                  placement="bottom-end"
-                >
-                  <Button
-                    icon="clean"
-                    text="Cleanup"
-                    minimal
-                    loading={isCleanupPending}
-                    large
-                  />
-                </Popover>
               </div>
             </div>
           </div>
