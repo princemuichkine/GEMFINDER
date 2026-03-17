@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mooncake",
+  title: "Gemfinder",
   description: "Find promising repositories",
 };
 
