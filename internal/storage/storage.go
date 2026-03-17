@@ -123,9 +123,9 @@ func (s *Store) PruneOldRepos(days int) (int64, error) {
 		DELETE FROM metrics_history
 		WHERE repo_id IN (
 			SELECT id FROM repositories
-			WHERE last_scanned_at < NOW() - ($1 || ' days')::INTERVAL
-			   OR (last_scanned_at IS NULL AND updated_at < NOW() - ($1 || ' days')::INTERVAL)
-			   OR (last_scanned_at IS NULL AND updated_at IS NULL AND created_at < NOW() - ($1 || ' days')::INTERVAL)
+			WHERE last_scanned_at < NOW() - make_interval(days => $1)
+			   OR (last_scanned_at IS NULL AND updated_at < NOW() - make_interval(days => $1))
+			   OR (last_scanned_at IS NULL AND updated_at IS NULL AND created_at < NOW() - make_interval(days => $1))
 		)
 	`, days)
 	if err != nil {
@@ -134,9 +134,9 @@ func (s *Store) PruneOldRepos(days int) (int64, error) {
 
 	result, err := s.db.Exec(`
 		DELETE FROM repositories
-		WHERE last_scanned_at < NOW() - ($1 || ' days')::INTERVAL
-		   OR (last_scanned_at IS NULL AND updated_at < NOW() - ($1 || ' days')::INTERVAL)
-		   OR (last_scanned_at IS NULL AND updated_at IS NULL AND created_at < NOW() - ($1 || ' days')::INTERVAL)
+		WHERE last_scanned_at < NOW() - make_interval(days => $1)
+		   OR (last_scanned_at IS NULL AND updated_at < NOW() - make_interval(days => $1))
+		   OR (last_scanned_at IS NULL AND updated_at IS NULL AND created_at < NOW() - make_interval(days => $1))
 	`, days)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune repos: %w", err)
@@ -163,7 +163,7 @@ func (s *Store) PruneOrphanedMetricsHistory() (int64, error) {
 func (s *Store) PruneOldMetricsHistory(days int) (int64, error) {
 	result, err := s.db.Exec(`
 		DELETE FROM metrics_history
-		WHERE captured_at < NOW() - ($1 || ' days')::INTERVAL
+		WHERE captured_at < NOW() - make_interval(days => $1)
 	`, days)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune old metrics: %w", err)
@@ -244,7 +244,7 @@ func (s *Store) ArchiveAndClear() (int64, error) {
 func (s *Store) PruneOldArchives(days int) (int64, error) {
 	result, err := s.db.Exec(`
 		DELETE FROM repositories_archive
-		WHERE archived_at < NOW() - ($1 || ' days')::INTERVAL
+		WHERE archived_at < NOW() - make_interval(days => $1)
 	`, days)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune archives: %w", err)
