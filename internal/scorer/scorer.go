@@ -59,12 +59,17 @@ func CalculateScore(r models.Repository) float64 {
 
 	// Total Score
 	score := velocity * freshness * engagement * vitality * sleeperBonus * creatorQuality
-	
+
 	// Dampen massive repos (we want gems, not established giants)
 	if r.Stars > 15000 {
 		score = score * 0.2
 	}
-	
+
+	// Cap at 100 for readability and consistency
+	if score > 100 {
+		score = 100
+	}
+
 	return math.Round(score*100) / 100
 }
 

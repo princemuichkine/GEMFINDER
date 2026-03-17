@@ -25,6 +25,13 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Cleanup old repos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Pruning repos not scanned in 180 days..."
+          go run ./cmd/gemhunter cleanup --days 180
+
       - name: Run Gem Collector
         env:
           TOKEN: ${{ secrets.TOKEN }}

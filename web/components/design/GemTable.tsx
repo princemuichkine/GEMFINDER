@@ -4,6 +4,7 @@ import {
   Card,
   HTMLTable,
   Tag,
+  Tooltip,
   Intent,
   AnchorButton,
   Icon,
@@ -63,10 +64,10 @@ function getLanguageIntent(language: string): Intent {
 }
 
 function getScoreIntent(score: number): Intent {
-  // Color code scores: Higher is better!
-  if (score >= 60) return Intent.SUCCESS; // Green - Excellent gems
-  if (score >= 40) return Intent.PRIMARY; // Blue/Teal - Great finds
-  if (score >= 20) return Intent.WARNING; // Orange - Decent
+  // Color code scores: Higher is better! (cap 100)
+  if (score >= 80) return Intent.SUCCESS; // Green - Excellent gems
+  if (score >= 50) return Intent.PRIMARY; // Blue/Teal - Great finds
+  if (score >= 25) return Intent.WARNING; // Orange - Decent
   return Intent.DANGER; // Red - Low score
 }
 
@@ -167,20 +168,30 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                       >
                         {repo.owner}/{repo.name}
                       </span>
-                      <Tag
-                        intent={getScoreIntent(repo.score)}
-                        minimal
-                        style={{
-                          minHeight: "24px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          fontSize: "0.875rem",
-                          padding: "4px 6px",
-                          marginLeft: "0.75rem",
-                        }}
+                      <Tooltip
+                        content={
+                          <div style={{ maxWidth: 280, padding: 4 }}>
+                            <strong>Gem Score</strong> — Combines velocity (stars/hour), freshness, engagement, and creator quality. Higher = more promising. 80+ = excellent, 50+ = great, 25+ = decent.
+                          </div>
+                        }
+                        placement="top"
                       >
-                        {repo.score.toFixed(1)}
-                      </Tag>
+                        <Tag
+                          intent={getScoreIntent(repo.score)}
+                          minimal
+                          style={{
+                            minHeight: "24px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            fontSize: "0.875rem",
+                            padding: "4px 6px",
+                            marginLeft: "0.75rem",
+                            cursor: "help",
+                          }}
+                        >
+                          {repo.score.toFixed(1)}
+                        </Tag>
+                      </Tooltip>
                     </div>
                     {repo.description && (
                       <span

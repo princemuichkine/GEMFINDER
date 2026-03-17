@@ -53,3 +53,14 @@ export async function getDistinctLanguages() {
 
   return data.map((d: { language: string }) => d.language) as string[];
 }
+
+export async function getLastRunAt(): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_last_run_at");
+
+  if (error) {
+    console.error("Error fetching last run:", error);
+    return null;
+  }
+
+  return data as string | null;
+}

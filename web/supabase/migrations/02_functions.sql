@@ -46,7 +46,7 @@ BEGIN
         r.stars,
         r.forks,
         r.issues,
-        r.score,
+        LEAST(r.score, 100)::FLOAT AS score,
         r.created_at,
         (r.stars - COALESCE(om.old_stars, r.stars)) AS stars_growth,
         (r.forks - COALESCE(om.old_forks, r.forks)) AS forks_growth,
@@ -60,7 +60,7 @@ BEGIN
         AND r.score >= p_min_score
     ORDER BY 
         CASE 
-            WHEN p_sort_by = 'score' THEN r.score
+            WHEN p_sort_by = 'score' THEN LEAST(r.score, 100)
             WHEN p_sort_by = 'stars' THEN r.stars::FLOAT
             WHEN p_sort_by = 'growth' THEN (r.stars - COALESCE(om.old_stars, r.stars))::FLOAT
             ELSE r.score
@@ -91,4 +91,11 @@ BEGIN
     ORDER BY r.language;
 END;
 $$ LANGUAGE plpgsql
+SET search_path = public;
+
+-- Returns the most recent last_scanned_at across all repositories (when the collector last ran)
+CREATE OR REPLACE FUNCTION get_last_run_at()
+RETURNS TIMESTAMPTZ AS $$
+  SELECT MAX(last_scanned_at) FROM repositories;
+$$ LANGUAGE sql STABLE
 SET search_path = public;

@@ -5,6 +5,7 @@ import GemTable from "../components/design/GemTable";
 import {
   getRepoStats,
   getDistinctLanguages,
+  getLastRunAt,
   RepoStats,
 } from "@/lib/supabase/queries";
 import {
@@ -15,13 +16,17 @@ import {
   OverlayToaster,
   Position,
   Classes,
+  Popover,
+  Menu,
+  MenuItem,
 } from "@blueprintjs/core";
-import { runCollector } from "@/lib/utils/actions";
+import { runCollector, runCleanup } from "@/lib/utils/actions";
 
 export default function Home() {
   const [repos, setRepos] = useState<RepoStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 
   // Filters
   const [language, setLanguage] = useState<string>("All");
@@ -33,10 +38,11 @@ export default function Home() {
 
   // Server Action Transition
   const [isPending, startTransition] = useTransition();
+  const [isCleanupPending, startCleanupTransition] = useTransition();
 
   useEffect(() => {
-    // Load available languages on mount
     getDistinctLanguages().then(setAvailableLanguages);
+    getLastRunAt().then(setLastRunAt);
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -66,13 +72,28 @@ export default function Home() {
   const handleNextPage = () => setPage((p) => p + 1);
   const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
 
+  const formatLastRun = (iso: string | null) => {
+    if (!iso) return "Never";
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString();
+  };
+
   const handleRunEngine = () => {
     startTransition(async () => {
       const AppToaster = await OverlayToaster.create({
         position: Position.TOP,
       });
       AppToaster.show({
-        message: "Starting Collector Engine...",
+        message: "Running collector... (usually takes ~20 min)",
         intent: Intent.PRIMARY,
       });
 
@@ -83,13 +104,40 @@ export default function Home() {
           message: "Collector finished successfully!",
           intent: Intent.SUCCESS,
         });
-        // Refresh data
         fetchData();
-        // Also refresh languages
         getDistinctLanguages().then(setAvailableLanguages);
+        getLastRunAt().then(setLastRunAt);
       } else {
         AppToaster.show({
           message: `Collector failed: ${result.message}`,
+          intent: Intent.DANGER,
+        });
+      }
+    });
+  };
+
+  const handleCleanup = () => {
+    startCleanupTransition(async () => {
+      const AppToaster = await OverlayToaster.create({
+        position: Position.TOP,
+      });
+      AppToaster.show({
+        message: "Cleaning up old repos...",
+        intent: Intent.PRIMARY,
+      });
+
+      const result = await runCleanup(180);
+
+      if (result.success) {
+        AppToaster.show({
+          message: "Cleanup finished. Refreshing...",
+          intent: Intent.SUCCESS,
+        });
+        fetchData();
+        getDistinctLanguages().then(setAvailableLanguages);
+      } else {
+        AppToaster.show({
+          message: `Cleanup failed: ${result.message}`,
           intent: Intent.DANGER,
         });
       }
@@ -176,9 +224,9 @@ export default function Home() {
                     large
                   >
                     <option value={0}>All scores</option>
-                    <option value={20}>Score 20+</option>
-                    <option value={40}>Score 40+</option>
-                    <option value={60}>Score 60+</option>
+                    <option value={25}>Score 25+</option>
+                    <option value={50}>Score 50+</option>
+                    <option value={75}>Score 75+</option>
                   </HTMLSelect>
                 </div>
 
@@ -202,8 +250,14 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Run Engine Button */}
-              <div className="flex-shrink-0">
+              {/* Run Engine Button + Last Run + Cleanup */}
+              <div className="flex-shrink-0 flex items-center gap-4">
+                <span
+                  className={Classes.TEXT_MUTED}
+                  style={{ fontSize: "0.875rem" }}
+                >
+                  Last run: {formatLastRun(lastRunAt)}
+                </span>
                 <Button
                   intent={Intent.SUCCESS}
                   icon="play"
@@ -212,6 +266,27 @@ export default function Home() {
                   onClick={handleRunEngine}
                   large
                 />
+                <Popover
+                  content={
+                    <Menu>
+                      <MenuItem
+                        icon="trash"
+                        text="Clean old repos (180+ days)"
+                        onClick={handleCleanup}
+                        disabled={isCleanupPending}
+                      />
+                    </Menu>
+                  }
+                  placement="bottom-end"
+                >
+                  <Button
+                    icon="clean"
+                    text="Cleanup"
+                    minimal
+                    loading={isCleanupPending}
+                    large
+                  />
+                </Popover>
               </div>
             </div>
           </div>

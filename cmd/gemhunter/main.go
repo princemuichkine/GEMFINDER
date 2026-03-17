@@ -40,6 +40,7 @@ func main() {
 	tokenEnv := os.Getenv("TOKEN")
 	rootCmd.PersistentFlags().StringVar(&githubToken, "token", tokenEnv, "GitHub Personal Access Token")
 
+	var noArchive bool
 	var fetchCmd = &cobra.Command{
 		Use:   "fetch",
 		Short: "Fetch recent trending repositories from GitHub",
@@ -61,6 +62,16 @@ func main() {
 
 			if err := store.Init(); err != nil {
 				log.Printf("Warning: Failed to init store (might be handled by migrations): %v", err)
+			}
+
+			// Archive current repos and clear before fetch (fresh list, no leftover)
+			if !noArchive {
+				log.Print("Archiving current repos before fresh fetch...")
+				archived, err := store.ArchiveAndClear()
+				if err != nil {
+					log.Fatalf("Archive failed: %v", err)
+				}
+				log.Printf("  Archived %d repos", archived)
 			}
 
 			col := collector.NewCollector(githubToken, store)
@@ -135,8 +146,54 @@ func main() {
 	fetchCmd.Flags().Int("min-stars", 10, "Minimum stars required")
 	fetchCmd.Flags().Int("max-stars", 10000, "Maximum stars allowed (to exclude huge repos)")
 	fetchCmd.Flags().Int("days", 30, "Look back days for creation date")
+	fetchCmd.Flags().BoolVar(&noArchive, "no-archive", false, "Skip archive+clear (append to existing repos)")
 
 	rootCmd.AddCommand(fetchCmd)
+
+	var cleanupDays int
+	var cleanupCmd = &cobra.Command{
+		Use:   "cleanup",
+		Short: "Remove old repos and prune metrics history",
+		Run: func(cmd *cobra.Command, args []string) {
+			store, err := storage.NewStore(strings.TrimSpace(dbURL))
+			if err != nil {
+				log.Fatalf("Failed to open store: %v", err)
+			}
+			defer store.Close()
+
+			log.Printf("Pruning repos not scanned in %d days...", cleanupDays)
+			reposDeleted, err := store.PruneOldRepos(cleanupDays)
+			if err != nil {
+				log.Fatalf("Prune repos failed: %v", err)
+			}
+			log.Printf("  Deleted %d old repositories", reposDeleted)
+
+			log.Print("Pruning orphaned metrics_history...")
+			orphaned, err := store.PruneOrphanedMetricsHistory()
+			if err != nil {
+				log.Fatalf("Prune orphaned metrics failed: %v", err)
+			}
+			log.Printf("  Deleted %d orphaned metrics rows", orphaned)
+
+			log.Print("Pruning old metrics_history (keeping last 90 days)...")
+			oldMetrics, err := store.PruneOldMetricsHistory(90)
+			if err != nil {
+				log.Fatalf("Prune old metrics failed: %v", err)
+			}
+			log.Printf("  Deleted %d old metrics rows", oldMetrics)
+
+			log.Print("Pruning old archives (older than 180 days)...")
+			archivesPruned, err := store.PruneOldArchives(180)
+			if err != nil {
+				log.Fatalf("Prune archives failed: %v", err)
+			}
+			log.Printf("  Deleted %d old archive rows", archivesPruned)
+
+			log.Println("Cleanup complete.")
+		},
+	}
+	cleanupCmd.Flags().IntVar(&cleanupDays, "days", 180, "Delete repos not scanned in this many days")
+	rootCmd.AddCommand(cleanupCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
