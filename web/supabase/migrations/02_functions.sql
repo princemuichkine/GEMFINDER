@@ -1,13 +1,14 @@
 -- 02_functions.sql
 
--- Function to get repository stats with growth
+-- Function to get repository stats with growth (optional p_search: owner / name / description, ILIKE)
 CREATE OR REPLACE FUNCTION get_repo_stats(
     p_period_days INT DEFAULT 30,
     p_language TEXT DEFAULT NULL,
     p_page INT DEFAULT 1,
     p_page_size INT DEFAULT 50,
     p_min_score FLOAT DEFAULT 0,
-    p_sort_by TEXT DEFAULT 'score'
+    p_sort_by TEXT DEFAULT 'score',
+    p_search TEXT DEFAULT NULL
 )
 RETURNS TABLE (
     repo_id BIGINT,
@@ -26,6 +27,8 @@ RETURNS TABLE (
     owner_repo_count INT,
     velocity_badge TEXT
 ) AS $$
+DECLARE
+    q TEXT := NULLIF(TRIM(COALESCE(p_search, '')), '');
 BEGIN
     RETURN QUERY
     WITH old_metrics AS (
@@ -58,6 +61,12 @@ BEGIN
     WHERE 
         (p_language IS NULL OR p_language = 'All' OR r.language ILIKE p_language)
         AND r.score >= p_min_score
+        AND (
+            q IS NULL
+            OR r.owner ILIKE '%' || q || '%'
+            OR r.name ILIKE '%' || q || '%'
+            OR COALESCE(r.description, '') ILIKE '%' || q || '%'
+        )
     ORDER BY 
         CASE 
             WHEN p_sort_by = 'score' THEN LEAST(r.score, 100)

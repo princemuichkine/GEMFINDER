@@ -25,7 +25,9 @@ export async function getRepoStats(
   pageSize: number = 50,
   minScore: number = 0,
   sortBy: string = "score",
+  search: string | null = null,
 ) {
+  const trimmed = search?.trim() ?? "";
   const { data, error } = await supabase.rpc("get_repo_stats", {
     p_period_days: periodDays,
     p_language: language === "All" ? null : language,
@@ -33,6 +35,7 @@ export async function getRepoStats(
     p_page_size: pageSize,
     p_min_score: minScore,
     p_sort_by: sortBy,
+    p_search: trimmed === "" ? null : trimmed,
   });
 
   if (error) {

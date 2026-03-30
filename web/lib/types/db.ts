@@ -121,6 +121,7 @@ export type Database = {
           p_page?: number;
           p_page_size?: number;
           p_period_days?: number;
+          p_search?: string | null;
           p_sort_by?: string;
         };
         Returns: {

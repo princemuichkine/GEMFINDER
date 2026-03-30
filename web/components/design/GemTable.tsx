@@ -14,9 +14,13 @@ import {
 import { IconNames } from "@blueprintjs/icons";
 import { RepoStats } from "@/lib/supabase/queries";
 
+export type GemTableVariant = "gems" | "github";
+
 interface GemTableProps {
   repos: RepoStats[];
   loading?: boolean;
+  /** gems: curated DB + gem score. github: global GitHub search (relevance, no growth). */
+  variant?: GemTableVariant;
 }
 
 function getLanguageIntent(language: string): Intent {
@@ -71,7 +75,11 @@ function getScoreIntent(score: number): Intent {
   return Intent.DANGER; // Red - Low score
 }
 
-export default function GemTable({ repos, loading }: GemTableProps) {
+export default function GemTable({
+  repos,
+  loading,
+  variant = "gems",
+}: GemTableProps) {
   if (loading) {
     return (
       <Card>
@@ -86,9 +94,13 @@ export default function GemTable({ repos, loading }: GemTableProps) {
     return (
       <Card>
         <div className="text-center p-12">
-          <h3 className={Classes.HEADING}>No gems found</h3>
+          <h3 className={Classes.HEADING}>
+            {variant === "github" ? "No repositories found" : "No gems found"}
+          </h3>
           <p className={Classes.TEXT_MUTED}>
-            Try adjusting your filters or run the collector.
+            {variant === "github"
+              ? "Try another query or GitHub search syntax (e.g. language:python, stars:>100)."
+              : "Try adjusting your filters or run the collector."}
           </p>
         </div>
       </Card>
@@ -154,7 +166,7 @@ export default function GemTable({ repos, loading }: GemTableProps) {
           </thead>
           <tbody>
             {repos.map((repo) => (
-              <tr key={repo.repo_id}>
+              <tr key={`${repo.owner}/${repo.name}`}>
                 <td style={{ padding: "1.25rem 1.5rem", verticalAlign: "top" }}>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-baseline gap-5 flex-wrap">
@@ -171,13 +183,29 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                       <Tooltip
                         content={
                           <div style={{ maxWidth: 280, padding: 4 }}>
-                            <strong>Gem Score</strong> — Combines velocity (stars/hour), freshness, engagement, and creator quality. Higher = more promising. 80+ = excellent, 50+ = great, 25+ = decent.
+                            {variant === "github" ? (
+                              <>
+                                <strong>Match</strong> — GitHub&rsquo;s relevance
+                                score for your search query (higher = closer match).
+                              </>
+                            ) : (
+                              <>
+                                <strong>Gem Score</strong> — Combines velocity
+                                (stars/hour), freshness, engagement, and creator
+                                quality. Higher = more promising. 80+ = excellent,
+                                50+ = great, 25+ = decent.
+                              </>
+                            )}
                           </div>
                         }
                         placement="top"
                       >
                         <Tag
-                          intent={getScoreIntent(repo.score)}
+                          intent={
+                            variant === "github"
+                              ? Intent.PRIMARY
+                              : getScoreIntent(repo.score)
+                          }
                           minimal
                           style={{
                             minHeight: "24px",
@@ -189,7 +217,9 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                             cursor: "help",
                           }}
                         >
-                          {repo.score.toFixed(1)}
+                          {variant === "github" && repo.score === 0
+                            ? "—"
+                            : repo.score.toFixed(1)}
                         </Tag>
                       </Tooltip>
                     </div>
@@ -254,7 +284,7 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                         }}
                       />
                     </Tag>
-                    {repo.stars_growth > 0 && (
+                    {variant === "gems" && repo.stars_growth > 0 && (
                       <Tag
                         minimal
                         intent={Intent.SUCCESS}
@@ -309,7 +339,7 @@ export default function GemTable({ repos, loading }: GemTableProps) {
                         }}
                       />
                     </Tag>
-                    {repo.forks_growth > 0 && (
+                    {variant === "gems" && repo.forks_growth > 0 && (
                       <Tag
                         minimal
                         intent={Intent.SUCCESS}
