@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState, Fragment } from "react";
 import {
   Card,
   HTMLTable,
@@ -13,8 +14,15 @@ import {
   Spinner,
 } from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
-import { RepoStats, RepoFlag } from "@/lib/supabase/queries";
+import {
+  RepoStats,
+  RepoFlag,
+  RepoHistoryPoint,
+  getRepoHistory,
+} from "@/lib/supabase/queries";
+import { formatAge } from "@/lib/format/time";
 import Sparkline from "./Sparkline";
+import RepoHistoryPanel from "./RepoHistoryPanel";
 
 export type GemTableVariant = "gems" | "github";
 
@@ -54,18 +62,6 @@ function getScoreIntent(score: number): Intent {
   return Intent.DANGER;
 }
 
-/** Compact relative age, e.g. "today", "12d", "5mo", "2y". */
-function timeAgo(iso: string | null): string | null {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return null;
-  const days = Math.max(0, (Date.now() - t) / 86_400_000);
-  if (days < 1) return "today";
-  if (days < 30) return `${Math.round(days)}d`;
-  if (days < 365) return `${Math.round(days / 30)}mo`;
-  return `${Math.round(days / 365)}y`;
-}
-
 /**
  * Derive a tiny 3-point trend from the growth fields we already have — no extra
  * network calls. Series: [stars two periods ago, stars one period ago, now].
@@ -95,6 +91,35 @@ export default function GemTable({
   onToggleFlag,
 }: GemTableProps) {
   const isGems = variant === "gems";
+  const colCount = isGems ? 6 : 5;
+
+  const [expandedGithubId, setExpandedGithubId] = useState<number | null>(null);
+  const [historyById, setHistoryById] = useState<
+    Record<number, RepoHistoryPoint[]>
+  >({});
+  const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
+
+  const toggleHistory = useCallback(
+    async (githubId: number) => {
+      if (expandedGithubId === githubId) {
+        setExpandedGithubId(null);
+        return;
+      }
+
+      setExpandedGithubId(githubId);
+
+      if (historyById[githubId]) return;
+
+      setLoadingHistoryId(githubId);
+      try {
+        const points = await getRepoHistory(githubId);
+        setHistoryById((prev) => ({ ...prev, [githubId]: points }));
+      } finally {
+        setLoadingHistoryId(null);
+      }
+    },
+    [expandedGithubId, historyById],
+  );
 
   if (loading) {
     return (
@@ -144,12 +169,15 @@ export default function GemTable({
           </thead>
           <tbody>
             {repos.map((repo) => {
-              const createdAgo = timeAgo(repo.created_at);
-              const updatedAgo = isGems ? timeAgo(repo.updated_at) : null;
+              const createdAgo = formatAge(repo.created_at);
+              const updatedAgo = isGems ? formatAge(repo.updated_at) : null;
               const accel = repo.acceleration ?? 0;
+              const isExpanded = expandedGithubId === repo.github_id;
+              const rowKey = `${repo.owner}/${repo.name}`;
 
               return (
-                <tr key={`${repo.owner}/${repo.name}`}>
+                <Fragment key={rowKey}>
+                <tr>
                   <td style={{ padding: "1.25rem 1.5rem", verticalAlign: "top" }}>
                     <div className="flex flex-col gap-2">
                       <div className="flex items-baseline gap-3 flex-wrap">
@@ -174,10 +202,10 @@ export default function GemTable({
                                 </>
                               ) : (
                                 <>
-                                  <strong>Gem Score</strong> — Combines velocity
-                                  (stars/hour), freshness, engagement, and creator
-                                  quality. Higher = more promising. 80+ =
-                                  excellent, 50+ = great, 25+ = decent.
+                                  <strong>Gem Score</strong> — Weighted blend of
+                                  momentum, traction, engagement, freshness,
+                                  maintenance, and creator quality. 80+ = excellent,
+                                  50+ = great, 25+ = decent.
                                 </>
                               )}
                             </div>
@@ -390,16 +418,48 @@ export default function GemTable({
                   {isGems && (
                     <td style={cellStyle}>
                       <div className="flex flex-col items-start gap-1">
-                        <Tooltip
-                          content="Star trajectory across the previous two periods (left = older, right = now)."
-                          placement="top"
-                        >
-                          <span
-                            style={{ display: "inline-flex", cursor: "help" }}
+                        <div className="flex flex-row items-center gap-1">
+                          <Tooltip
+                            content="Click to expand full star history from archive runs."
+                            placement="top"
                           >
-                            <Sparkline values={trendSeries(repo)} />
-                          </span>
-                        </Tooltip>
+                            <Button
+                              minimal
+                              small
+                              icon={
+                                isExpanded
+                                  ? IconNames.CHEVRON_DOWN
+                                  : IconNames.CHEVRON_RIGHT
+                              }
+                              aria-label={
+                                isExpanded
+                                  ? "Collapse history"
+                                  : "Expand history"
+                              }
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleHistory(repo.github_id)}
+                            />
+                          </Tooltip>
+                          <Tooltip
+                            content="Recent trajectory (left = older, right = now). Click the chevron for full history."
+                            placement="top"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleHistory(repo.github_id)}
+                              style={{
+                                display: "inline-flex",
+                                cursor: "pointer",
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                              }}
+                              aria-label="Toggle star history"
+                            >
+                              <Sparkline values={trendSeries(repo)} />
+                            </button>
+                          </Tooltip>
+                        </div>
                         {accel !== 0 && (
                           <Tooltip
                             content="Acceleration — recent star growth minus the previous period's growth. Positive = the star-rate is speeding up."
@@ -490,6 +550,25 @@ export default function GemTable({
                     </div>
                   </td>
                 </tr>
+                {isGems && isExpanded && (
+                  <tr>
+                    <td
+                      colSpan={colCount}
+                      style={{
+                        padding: "0 1.5rem 1.25rem",
+                        background: "rgba(255,255,255,0.02)",
+                        borderTop: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <RepoHistoryPanel
+                        repo={repo}
+                        history={historyById[repo.github_id] ?? null}
+                        loading={loadingHistoryId === repo.github_id}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>

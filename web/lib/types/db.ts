@@ -241,6 +241,10 @@ export type Database = {
           stars: number;
         }[];
       };
+      get_last_run_at: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;

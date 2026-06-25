@@ -5,11 +5,13 @@ import GemTable from "@/components/design/GemTable";
 import {
   getRepoStats,
   getDistinctLanguages,
+  getLastRunAt,
   setRepoFlag,
   RepoStats,
   RepoFlag,
   FlagFilter,
 } from "@/lib/supabase/queries";
+import { formatRelativeTime } from "@/lib/format/time";
 import {
   Button,
   ButtonGroup,
@@ -34,6 +36,7 @@ export default function GemfindPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<FlagFilter>("default");
   const [starRange, setStarRange] = useState<string>("any");
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 
   const STAR_RANGES: Record<string, { min: number; max: number | null }> = {
     any: { min: 0, max: null },
@@ -45,6 +48,7 @@ export default function GemfindPage() {
 
   useEffect(() => {
     getDistinctLanguages().then(setAvailableLanguages);
+    getLastRunAt().then(setLastRunAt);
   }, []);
 
   useEffect(() => {
@@ -137,6 +141,16 @@ export default function GemfindPage() {
           </h1>
           <p className={`${Classes.TEXT_MUTED} mt-1`}>
             Curated repositories from your collector (Supabase).
+            {lastRunAt && (
+              <>
+                {" "}
+                Last scan{" "}
+                <span title={new Date(lastRunAt).toLocaleString()}>
+                  {formatRelativeTime(lastRunAt)}
+                </span>
+                .
+              </>
+            )}
           </p>
         </div>
 
