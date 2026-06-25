@@ -5,7 +5,10 @@ import GemTable from "@/components/design/GemTable";
 import {
   getRepoStats,
   getDistinctLanguages,
+  setRepoFlag,
   RepoStats,
+  RepoFlag,
+  FlagFilter,
 } from "@/lib/supabase/queries";
 import {
   Button,
@@ -29,6 +32,16 @@ export default function GemfindPage() {
   const [pageSize, setPageSize] = useState<number>(100);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [view, setView] = useState<FlagFilter>("default");
+  const [starRange, setStarRange] = useState<string>("any");
+
+  const STAR_RANGES: Record<string, { min: number; max: number | null }> = {
+    any: { min: 0, max: null },
+    lt500: { min: 0, max: 499 },
+    "500-2k": { min: 500, max: 2000 },
+    "2k-10k": { min: 2000, max: 10000 },
+    "10k+": { min: 10000, max: null },
+  };
 
   useEffect(() => {
     getDistinctLanguages().then(setAvailableLanguages);
@@ -46,26 +59,68 @@ export default function GemfindPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getRepoStats(
-        period,
+      const range = STAR_RANGES[starRange] ?? STAR_RANGES.any;
+      const data = await getRepoStats({
+        periodDays: period,
         language,
         page,
         pageSize,
         minScore,
         sortBy,
-        debouncedSearch || null,
-      );
+        search: debouncedSearch || null,
+        flagFilter: view,
+        minStars: range.min,
+        maxStars: range.max,
+      });
       setRepos(data);
     } catch (error) {
       console.error("Failed to load gems", error);
     } finally {
       setLoading(false);
     }
-  }, [period, language, page, pageSize, minScore, sortBy, debouncedSearch]);
+    // STAR_RANGES is a stable literal; safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    period,
+    language,
+    page,
+    pageSize,
+    minScore,
+    sortBy,
+    debouncedSearch,
+    view,
+    starRange,
+  ]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleToggleFlag = useCallback(
+    async (githubId: number, flag: RepoFlag, on: boolean) => {
+      setRepos((prev) =>
+        prev.flatMap((r) => {
+          if (r.github_id !== githubId) return [r];
+          const updated: RepoStats = {
+            ...r,
+            ...(flag === "saved" ? { is_saved: on } : { is_hidden: on }),
+          };
+          // Drop the row if it no longer belongs in the current view.
+          if (view === "default" && flag === "hidden" && on) return [];
+          if (view === "saved" && flag === "saved" && !on) return [];
+          if (view === "hidden" && flag === "hidden" && !on) return [];
+          return [updated];
+        }),
+      );
+      try {
+        await setRepoFlag(githubId, flag, on);
+      } catch {
+        // Persistence failed — reconcile with the server.
+        fetchData();
+      }
+    },
+    [view, fetchData],
+  );
 
   const handleNextPage = () => setPage((p) => p + 1);
   const handlePrevPage = () => setPage((p) => Math.max(1, p - 1));
@@ -177,6 +232,41 @@ export default function GemfindPage() {
                 </HTMLSelect>
               </div>
 
+              <div style={{ width: "180px", marginRight: "1rem" }}>
+                <HTMLSelect
+                  value={starRange}
+                  onChange={(e) => {
+                    setStarRange(e.target.value);
+                    setPage(1);
+                  }}
+                  fill
+                  large
+                >
+                  <option value="any">Any stars</option>
+                  <option value="lt500">Hidden gems (&lt;500)</option>
+                  <option value="500-2k">500 – 2k</option>
+                  <option value="2k-10k">2k – 10k</option>
+                  <option value="10k+">10k+</option>
+                </HTMLSelect>
+              </div>
+
+              <div style={{ width: "180px", marginRight: "1rem" }}>
+                <HTMLSelect
+                  value={view}
+                  onChange={(e) => {
+                    setView(e.target.value as FlagFilter);
+                    setPage(1);
+                  }}
+                  fill
+                  large
+                >
+                  <option value="default">Active gems</option>
+                  <option value="saved">★ Saved</option>
+                  <option value="hidden">Hidden</option>
+                  <option value="all">Include hidden</option>
+                </HTMLSelect>
+              </div>
+
               <div style={{ width: "200px" }}>
                 <HTMLSelect
                   value={sortBy}
@@ -190,6 +280,8 @@ export default function GemfindPage() {
                   <option value="score">Best score</option>
                   <option value="stars">Most stars</option>
                   <option value="growth">Most growth</option>
+                  <option value="acceleration">Accelerating</option>
+                  <option value="durability">Most durable</option>
                   <option value="created_desc">Newest first</option>
                   <option value="created_asc">Oldest first</option>
                 </HTMLSelect>
@@ -198,7 +290,12 @@ export default function GemfindPage() {
           </div>
         </div>
 
-        <GemTable repos={repos} loading={loading} variant="gems" />
+        <GemTable
+          repos={repos}
+          loading={loading}
+          variant="gems"
+          onToggleFlag={handleToggleFlag}
+        />
 
         {!loading && repos.length > 0 && (
           <div
