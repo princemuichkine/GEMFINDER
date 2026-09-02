@@ -1,4 +1,22 @@
--- 02_functions.sql — RPC functions (canonical fresh install)
+-- 04_optimize_repo_stats.sql
+-- List RPC was scanning all of repositories_archive (~288k rows) on every
+-- page load. anon statement_timeout is 3s, so the UI timed out whenever
+-- the archive was not fully cached. Keep a tiny sightings table and use
+-- per-repo index lookups for growth snapshots.
+
+CREATE TABLE IF NOT EXISTS repo_sightings (
+    github_id BIGINT PRIMARY KEY,
+    times_seen INTEGER NOT NULL DEFAULT 0,
+    first_seen_at TIMESTAMPTZ
+);
+
+ALTER TABLE repo_sightings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access on repo_sightings" ON repo_sightings;
+CREATE POLICY "Allow public read access on repo_sightings"
+    ON repo_sightings FOR SELECT TO public USING (true);
+
+GRANT SELECT ON TABLE repo_sightings TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION bump_repo_sighting()
 RETURNS TRIGGER
@@ -21,6 +39,14 @@ AFTER INSERT ON repositories_archive
 FOR EACH ROW
 EXECUTE FUNCTION bump_repo_sighting();
 
+INSERT INTO repo_sightings (github_id, times_seen, first_seen_at)
+SELECT a.github_id, COUNT(DISTINCT a.archived_at)::INT, MIN(a.archived_at)
+FROM repositories_archive a
+GROUP BY a.github_id
+ON CONFLICT (github_id) DO UPDATE SET
+    times_seen = EXCLUDED.times_seen,
+    first_seen_at = EXCLUDED.first_seen_at;
+
 CREATE OR REPLACE FUNCTION get_repo_stats(
     p_period_days INT DEFAULT 30,
     p_language TEXT DEFAULT NULL,
@@ -29,7 +55,7 @@ CREATE OR REPLACE FUNCTION get_repo_stats(
     p_min_score FLOAT DEFAULT 0,
     p_sort_by TEXT DEFAULT 'score',
     p_search TEXT DEFAULT NULL,
-    p_flag_filter TEXT DEFAULT NULL,  -- NULL/'default' = hide hidden, 'saved', 'hidden', 'all'
+    p_flag_filter TEXT DEFAULT NULL,
     p_min_stars INT DEFAULT 0,
     p_max_stars INT DEFAULT NULL
 )
@@ -165,37 +191,10 @@ END;
 $$ LANGUAGE plpgsql STABLE
 SET search_path = public;
 
-CREATE OR REPLACE FUNCTION get_repo_history(p_github_id BIGINT)
-RETURNS TABLE (
-    captured_at TIMESTAMPTZ,
-    stars INT,
-    forks INT
-) AS $$
-    SELECT a.archived_at AS captured_at, a.stars, a.forks
-    FROM repositories_archive a
-    WHERE a.github_id = p_github_id
-    UNION ALL
-    SELECT COALESCE(r.last_scanned_at, NOW()) AS captured_at, r.stars, r.forks
-    FROM repositories r
-    WHERE r.github_id = p_github_id
-    ORDER BY captured_at ASC;
-$$ LANGUAGE sql STABLE
-SET search_path = public;
+GRANT EXECUTE ON FUNCTION get_repo_stats(
+    INT, TEXT, INT, INT, FLOAT, TEXT, TEXT, TEXT, INT, INT
+) TO anon, authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION get_distinct_languages()
-RETURNS TABLE (language TEXT) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT DISTINCT r.language
-    FROM repositories r
-    WHERE r.language IS NOT NULL AND r.language != ''
-    ORDER BY r.language;
-END;
-$$ LANGUAGE plpgsql
-SET search_path = public;
-
-CREATE OR REPLACE FUNCTION get_last_run_at()
-RETURNS TIMESTAMPTZ AS $$
-  SELECT MAX(last_scanned_at) FROM repositories;
-$$ LANGUAGE sql STABLE
-SET search_path = public;
+ANALYZE repo_sightings;
+ANALYZE repositories_archive;
+ANALYZE repositories;

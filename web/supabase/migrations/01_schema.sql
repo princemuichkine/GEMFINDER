@@ -55,6 +55,13 @@ CREATE TABLE IF NOT EXISTS repo_flags (
     PRIMARY KEY (github_id, flag)
 );
 
+-- Per-github_id archive counts so list RPCs do not scan repositories_archive.
+CREATE TABLE IF NOT EXISTS repo_sightings (
+    github_id BIGINT PRIMARY KEY,
+    times_seen INTEGER NOT NULL DEFAULT 0,
+    first_seen_at TIMESTAMPTZ
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_repositories_score ON repositories(score DESC);
 CREATE INDEX IF NOT EXISTS idx_repositories_language ON repositories(language);
@@ -69,6 +76,7 @@ ALTER TABLE repositories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE metrics_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE repositories_archive ENABLE ROW LEVEL SECURITY;
 ALTER TABLE repo_flags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE repo_sightings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read access on repositories"
     ON repositories FOR SELECT TO public USING (true);
@@ -120,3 +128,6 @@ CREATE POLICY "Allow public insert on repo_flags"
 CREATE POLICY "Allow public delete on repo_flags"
     ON repo_flags FOR DELETE TO public
     USING (github_id IS NOT NULL AND flag IN ('saved', 'hidden'));
+
+CREATE POLICY "Allow public read access on repo_sightings"
+    ON repo_sightings FOR SELECT TO public USING (true);
