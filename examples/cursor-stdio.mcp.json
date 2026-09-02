@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "gemfinder": {
+      "command": "go",
+      "args": ["run", "./cmd/mcp"],
+      "cwd": "/absolute/path/to/GEMFINDER"
+    }
+  }
+}
