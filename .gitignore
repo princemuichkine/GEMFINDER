@@ -1,5 +1,7 @@
 # Go
 /gemhunter
+/mcp
+/gemfinder-mcp
 *.test
 *.out
 vendor/
